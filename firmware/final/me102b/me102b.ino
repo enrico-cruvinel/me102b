@@ -13,20 +13,28 @@
 #define ECHO_PIN
 #define TRIG_PIN
 
+
+/******* functions *******/ 
+void decode_message() ; 
+
+/**** data structures ****/
+typedef struct encoder_t ; 
+typedef struct motor_conf_t ;
+typedef struct motor_data_t ;
+
 /******** motors ********/
 const int freq = 5000;
 const int resolution = 8;
 int dutyCycle = 0 ; 
 
-const int spr_mot_channel = 0;
 const int mot_a_channel_1 = 1;
 const int mot_a_channel_2 = 2;
 const int mot_b_channel_1 = 3;
 const int mot_b_channel_2 = 4;
 
-int spr_mot_en = 0 ; 
-int spr_mot_en = 0 ; 
-
+int spr_mot_en = 0 ;
+int mot_a_en = 0 ; 
+int mot_b_en = 0 ; 
 
 int count=0;
 unsigned long on_time=0;
@@ -150,16 +158,18 @@ void decode_message(){
 /************************************/
 /*          type definitions        */
 /************************************/
+typedef struct motor_conf_t{
+  const int freq = 5000;
+  const int resolution = 8;
+  const int mot_channel = 0;
+  int dutyCycle = 0; 
+  int enable = 0;
+} motor_conf_t ; 
 
-typedef struct motor_data_t{
-  int motor_enable = 0 ; 
-  int pwm = 0 ; 
-} motor_data_t ; 
-
-typedef struct encoder_t{
+typedef struct encoder_data_t{
   float p = 0;
   float v = 0;
   float p_last = 0;
-} encoder_t ; 
+} encoder_data_t ; 
 
 //===================================================================================================================================
