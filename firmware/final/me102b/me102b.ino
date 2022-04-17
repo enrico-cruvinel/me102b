@@ -44,6 +44,9 @@ unsigned long start_time, now = 0 ;
 /******** encoders ********/
 ESP32Encoder encoder_A;
 ESP32Encoder encoder_B;
+
+encoder_data_t enc_A_data = { .p = 0, .v = 0, .p_last = 0 };
+encoder_data_t enc_B_data = { .p = 0, .v = 0, .p_last = 0 };
 float p_A = 0;
 float p_B = 0;
 float v_A = 0;
@@ -149,9 +152,23 @@ void decode_message(){
         start_time = millis() ; 
       }
     }
+
+
     else{
       Serial.println("Command not recognized") ; 
     }
+  }
+}
+
+void update_encoder(){
+  if (millis() > (prev_time + dt)){
+    prev_time = millis();
+    enc_A_data.p = encoder_A.getCount() / (75.81 * 6) * 2 * M_PI;
+    enc_B_data.p = encoder_B.getCount() / (75.81 * 6) * 2 * M_PI;
+    enc_A_data.v = (enc_A_data.p - enc_A_data.p_last) / (dt * 0.001);
+    enc_B_data.v = (enc_B_data.p - enc_B_data.p_last) / (dt * 0.001);
+    enc_A_data.p_last = enc_A_data.p;
+    enc_B_data.p_last = enc_B_data.p;
   }
 }
 
