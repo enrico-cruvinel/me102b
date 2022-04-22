@@ -1,40 +1,63 @@
 #include <Arduino.h>
 #include <ESP32Encoder.h>
+#include <ESP32Servo.h>
 
-#define SPR_MOT 26
-#define MOT_A_1 26
-#define MOT_A_2 25
-#define ENC_A_1 4
-#define ENC_A_2 5
-#define MOT_B_1 34
-#define MOT_B_2 39
-#define ENC_B_1 13
-#define ENC_B_2 12
-#define ECHO_PIN
-#define TRIG_PIN
+#define SPR_MOT_PIN 15
+#define MOT_A_1 2
+#define MOT_A_2 4
+#define ENC_A_1 13
+#define ENC_A_2 12
+#define MOT_B_1 5
+#define MOT_B_2 18
+#define ENC_B_1 14
+#define ENC_B_2 27
+#define ECHO_PIN 26
+#define TRIG_PIN 25
 
 
 /******* functions *******/ 
 void decode_message() ; 
-
+void update_motors() ; 
+void update_encoder() ;
+ 
 /**** data structures ****/
-typedef struct encoder_t ; 
-typedef struct motor_conf_t ;
-typedef struct motor_data_t ;
+/************************************/
+/*          type definitions        */
+/************************************/
+typedef struct motor_conf_t{
+  const int pin; 
+  const int freq;
+  const int resolution;
+  const int mot_channel_1;
+  const int mot_channel_2;
+  int enable;
+  int dutyCycle; 
+} motor_conf_t ; 
+
+typedef struct encoder_data_t{
+  float p;
+  float v;
+  float p_last;
+} encoder_data_t ; 
+
+/************************************/
+/*          var definitions         */
+/************************************/
 
 /******** motors ********/
 const int freq = 5000;
 const int resolution = 8;
-int dutyCycle = 0 ; 
 
-const int mot_a_channel_1 = 1;
-const int mot_a_channel_2 = 2;
-const int mot_b_channel_1 = 3;
-const int mot_b_channel_2 = 4;
+const int mot_a_channel_1 = 16;
+const int mot_a_channel_2 = 15;
+const int mot_b_channel_1 = 14;
+const int mot_b_channel_2 = 13;
 
-int spr_mot_en = 0 ;
-int mot_a_en = 0 ; 
-int mot_b_en = 0 ; 
+motor_conf_t spr_mot_conf = {.pin = 0, .freq = 0, .resolution = 0, .mot_channel_1 = 0, .mot_channel_2 = 0, .enable = 0, .dutyCycle = 0} ;
+motor_conf_t mot_a_conf = {.pin = 0, .freq = 0, .resolution = 0, .mot_channel_1 = 16, .mot_channel_2 = 15, .enable = 0, .dutyCycle = 0} ; 
+motor_conf_t mot_b_conf = {.pin = 0, .freq = 0, .resolution = 0, .mot_channel_1 = 14, .mot_channel_2 = 13, .enable = 0, .dutyCycle = 0} ;
+
+Servo spr_mot;
 
 int count=0;
 unsigned long on_time=0;
@@ -45,35 +68,38 @@ unsigned long start_time, now = 0 ;
 ESP32Encoder encoder_A;
 ESP32Encoder encoder_B;
 
-encoder_data_t enc_A_data = { .p = 0, .v = 0, .p_last = 0 };
-encoder_data_t enc_B_data = { .p = 0, .v = 0, .p_last = 0 };
-float p_A = 0;
-float p_B = 0;
-float v_A = 0;
-float v_B = 0;
-float p_A_last = 0;
-float p_B_last = 0;
+encoder_data_t enc_A_data = {.p = 0, .v = 0, .p_last = 0 };
+encoder_data_t enc_B_data = {.p = 0, .v = 0, .p_last = 0 };
+
 unsigned long prev_time = 0;
 const long dt = 20;
-
 
 //=====================================================================================================================================
 void setup() 
 {
 
   /*** motors ***/
+  
+  //servo motor
+  ESP32PWM::allocateTimer(0);
+  ESP32PWM::allocateTimer(1);
+  ESP32PWM::allocateTimer(2);
+  ESP32PWM::allocateTimer(3);
+  spr_mot.setPeriodHertz(50);    // standard 50 hz servo
+  spr_mot.attach(SPR_MOT_PIN, 615, 2415); // 
+
   //pwm channel
-  ledcSetup(spr_mot_channel, freq, resolution);
   ledcSetup(mot_a_channel_1, freq, resolution);
   ledcSetup(mot_a_channel_2, freq, resolution);
   ledcSetup(mot_b_channel_1, freq, resolution);
   ledcSetup(mot_b_channel_2, freq, resolution);
+  
   //pins
-  ledcAttachPin(SPR_MOT, spr_mot_channel); 
   ledcAttachPin(MOT_A_1, mot_a_channel_1);
   ledcAttachPin(MOT_A_2, mot_a_channel_2);
   ledcAttachPin(MOT_B_1, mot_b_channel_1);
   ledcAttachPin(MOT_B_2, mot_b_channel_2);
+
   /***********/
   
 
@@ -93,70 +119,127 @@ void setup()
 void loop() {
 
   /************ read message *************/
-
+  decode_message() ; 
   /************************************/
 
   /*********** motor write ************/
-//  if ((millis() - start_time) < on_time){
-//    ledcWrite(ledChannel, dutyCycle);
-//  } else{
-//    ledcWrite(ledChannel, 0);
-//    on_time = 0 ;  
-//  }
+  update_motors(); 
   /************************************/
     
   /************* encoder **************/
-  if (millis() > (prev_time + dt)){
-    prev_time = millis();
-    p_A = encoder_A.getCount() / (75.81 * 6) * 2 * M_PI;
-    p_B = encoder_B.getCount() / (75.81 * 6) * 2 * M_PI;
-    v_A = (p_A - p_A_last) / (dt * 0.001);
-    v_B = (p_B - p_B_last) / (dt * 0.001);
-    p_A_last = p_A;
-    p_B_last = p_B;
-  }
-  
+  update_encoder() ; 
   /***********************************/
-      
 }
-
 
 /************************************/
 /*          helper functions        */
 /************************************/
 
 void decode_message(){
-  if(Serial.available()>0){
-    
-    // read data
+    if(Serial.available()>0){
     char server_message[100] ; 
     byte buffSize = Serial.readBytesUntil('\n', server_message, 100);
     server_message[buffSize] = 0 ; 
-    Serial.println(server_message);
-
-    // check cmd. S = spring motor, A = motor A, B = motor B
-    if(server_message[0]) {
-      char *s = strtok(server_message, ","); //allows string to be broken into tokens by " ".
+    
+    // Example: R,S,1,100
+    if (server_message[0] == 'W') {
+      Serial.println(server_message);
+      char *s = strtok(server_message, ","); //allows string to be broken into tokens by ",".
       s = strtok(NULL, ",");
-      case "R"
-      case "M":
-      case "A":
-      case "B":
-      case ""
-        if (s != NULL && s[0] == 'T') {
-        s = strtok(NULL, ",");
-        if (s != NULL) on_time = (double) atoi(s); //sets variable to received data and converts ASCII to integer if message is not empty
-        s = strtok(NULL, ",");
-        s = strtok(NULL, ",");
-        if (s != NULL) dutyCycle = (double) atoi(s); //sets variable to received data and converts ASCII to integer if message is not empty
-        start_time = millis() ; 
+      switch(s[0]){
+        case 'S':
+          s = strtok(NULL, ",");
+          if (s != NULL) spr_mot_conf.enable = atoi(s); 
+          s = strtok(NULL, ",");
+          if (s != NULL) spr_mot_conf.dutyCycle = atoi(s);
+          break ; 
+        case 'A':
+          s = strtok(NULL, ",");
+          if (s != NULL) mot_a_conf.enable = atoi(s); 
+          s = strtok(NULL, ",");
+          if (s != NULL) mot_a_conf.dutyCycle = atoi(s);
+          break ; 
+        case 'B':
+          s = strtok(NULL, ",");
+          if (s != NULL) mot_b_conf.enable = atoi(s); 
+          s = strtok(NULL, ",");
+          if (s != NULL) mot_b_conf.dutyCycle = atoi(s);
+          break ; 
+        default:
+          break ;   
       }
     }
-
-
+    else if (server_message[0] == 'R'){
+      char *s = strtok(server_message, ","); //allows string to be broken into tokens by ",".
+      s = strtok(NULL, ",");
+      char buff[50] ; 
+      switch(s[0]){
+        case 'S':
+          sprintf(buff, "R,S,%d,%d", spr_mot_conf.enable, spr_mot_conf.dutyCycle) ; 
+          Serial.println(buff) ; 
+          break ; 
+        case 'A':
+          sprintf(buff, "R,A,%d,%d", mot_b_conf.enable, mot_b_conf.dutyCycle) ; 
+          Serial.println(buff) ; 
+          break ; 
+        case 'B':
+          sprintf(buff, "R,B,%d,%d", mot_b_conf.enable, mot_b_conf.dutyCycle) ; 
+          Serial.println(buff) ; 
+          break ; 
+        case 'I':
+          sprintf(buff, "R,I,%d,%d", 1, 1) ; 
+          Serial.println(buff) ; 
+          break ; 
+        case 'U':
+          sprintf(buff, "R,U,%d,%d", 1, 1) ; 
+          Serial.println(buff) ; 
+          break ; 
+        default:
+          break ;   
+      }
+      
+    }
     else{
       Serial.println("Command not recognized") ; 
     }
+  }
+}
+
+void update_motors(){
+  //need to add reverse
+  //motor a
+  if(mot_a_conf.enable){
+    if(mot_a_conf.dutyCycle > 0){
+      ledcWrite(mot_a_conf.mot_channel_1, mot_a_conf.dutyCycle);
+      ledcWrite(mot_a_conf.mot_channel_2, LOW);
+    }else{
+      ledcWrite(mot_a_conf.mot_channel_1, LOW);
+      ledcWrite(mot_a_conf.mot_channel_2, -mot_a_conf.dutyCycle);
+    }
+  }else{
+    ledcWrite(mot_a_conf.mot_channel_1, LOW);
+    ledcWrite(mot_a_conf.mot_channel_2, LOW);
+  }
+  
+  //motor b
+  if(mot_b_conf.enable){
+    if(mot_b_conf.dutyCycle > 0){
+      ledcWrite(mot_b_conf.mot_channel_1, mot_b_conf.dutyCycle);
+      ledcWrite(mot_b_conf.mot_channel_2, LOW);
+    }else{
+      ledcWrite(mot_b_conf.mot_channel_1, LOW);
+      ledcWrite(mot_b_conf.mot_channel_2, -mot_b_conf.dutyCycle);
+    }
+  }else{
+    ledcWrite(mot_b_conf.mot_channel_1, LOW);
+    ledcWrite(mot_b_conf.mot_channel_2, LOW);
+  }
+
+  //spr motor
+  if(spr_mot_conf.enable){
+    spr_mot.write(spr_mot_conf.dutyCycle);
+  }else{
+    spr_mot.write(90);
   }
 }
 
@@ -172,21 +255,5 @@ void update_encoder(){
   }
 }
 
-/************************************/
-/*          type definitions        */
-/************************************/
-typedef struct motor_conf_t{
-  const int freq = 5000;
-  const int resolution = 8;
-  const int mot_channel = 0;
-  int dutyCycle = 0; 
-  int enable = 0;
-} motor_conf_t ; 
-
-typedef struct encoder_data_t{
-  float p = 0;
-  float v = 0;
-  float p_last = 0;
-} encoder_data_t ; 
 
 //===================================================================================================================================

@@ -1,0 +1,33 @@
+(Inspired by ModBUS)
+Baud rates is 115200
+Message is ended with CRLF '\r\n' (carriage return and line feed)
+
+All messages should be 5 characters long, with the format
+char 0-3: device identifier (i.e. IMU, MOT, etc.)
+char 4: function code (read or write identifier)
+char 5: zeroth data bit
+char 6: first data bit
+char 7: second data bit
+char 8: third data bit
+char 9: final data bit
+
+IMU R XXXX => read IMU data
+MOT W XXXX => write to motor
+
+"XXXX" corresponds to base 10 values, ie. "W09999" writes 9999 to the throttle output
+"____" corresponds to ignored entries. These may not be newline characters. 
+
+All commands are echoed if accepted. For read commands, the read value is substituted into the return message,
+i.e. "W01111" -> "R0____" would be echoed "R01111" after the previous command if output as enabled. 
+
+Commands:
+Writing:
+W0XXX: write to throttle output, XXX corresponds to three entries. Valid range: TBD
+W1XXX: write to steering output, XXX corresponds to three entries. Valid range: TBD
+WW___: enable output
+WR___: disable output
+
+Reading:
+R0XXXX: read throttle output
+R1XXXX: read steering output
+RW___: check if output is enabled, returns WA001 if so and WA000 otherwise
