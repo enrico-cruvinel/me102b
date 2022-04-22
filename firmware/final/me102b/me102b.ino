@@ -19,7 +19,7 @@
 void decode_message() ; 
 void update_motors() ; 
 void update_encoder() ;
- 
+void read_sensors();
 /**** data structures ****/
 /************************************/
 /*          type definitions        */
@@ -105,7 +105,7 @@ void setup()
   encoder_B.attachHalfQuad(ENC_B_1, ENC_B_1); // Attache pins for use as encoder pins
   encoder_B.setCount(0);  // set starting count value after attaching
   /****************/
-  pinMode(2, OUTPUT) ; 
+  
   Serial.begin(115200);
 
 }
@@ -119,16 +119,14 @@ void loop() {
 
   /*********** motor write ************/
   update_motors(); 
-////  Serial.print(mot_a_conf.enable);
-////  Serial.println(mot_a_conf.dutyCycle) ;
-//  ledcWrite(mot_a_channel_1, LOW);
-//  ledcWrite(mot_a_channel_2, LOW);
-//  ledcWrite(mot_b_channel_1, LOW);
-//  ledcWrite(mot_b_channel_2, LOW);
   /************************************/
     
   /************* encoder **************/
   update_encoder() ; 
+  /***********************************/
+
+  /************ sensors **************/
+  read_sensors();
   /***********************************/
 }
 
@@ -209,7 +207,6 @@ void decode_message(){
 }
 
 void update_motors(){
-  //need to add reverse
   //motor a
   if(mot_a_conf.enable){
     if(mot_a_conf.dutyCycle > 0){
@@ -258,5 +255,7 @@ void update_encoder(){
   }
 }
 
+void read_sensors(){
 
+}
 //===================================================================================================================================
