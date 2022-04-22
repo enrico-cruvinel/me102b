@@ -182,11 +182,11 @@ void decode_message(){
           Serial.println(buff) ; 
           break ; 
         case 'A':
-          sprintf(buff, "R,A,%d,%d", mot_a_conf.enable, mot_a_conf.dutyCycle) ; 
+          sprintf(buff, "R,A,%d,%d,%d,%d,%d", mot_a_conf.enable, mot_a_conf.dutyCycle, enc_A_data.p_last, enc_A_data.p, enc_A_data.v) ; 
           Serial.println(buff) ; 
           break ; 
         case 'B':
-          sprintf(buff, "R,B,%d,%d", mot_b_conf.enable, mot_b_conf.dutyCycle) ; 
+          sprintf(buff, "R,B,%d,%d,%d,%d,%d", mot_b_conf.enable, mot_b_conf.dutyCycle, enc_B_data.p_last, enc_B_data.p, enc_B_data.v) ; 
           Serial.println(buff) ; 
           break ; 
         case 'I':
