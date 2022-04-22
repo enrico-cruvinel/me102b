@@ -19,7 +19,7 @@
 void decode_message() ; 
 void update_motors() ; 
 void update_encoder() ;
-void read_sensors();
+void read_ultrasonic();
 /**** data structures ****/
 /************************************/
 /*          type definitions        */
@@ -68,7 +68,14 @@ encoder_data_t enc_B_data = {.p = 0, .v = 0, .p_last = 0 };
 
 unsigned long prev_time = 0;
 const long dt = 20;
+/***********************/
 
+/****** ultrasonic *******/
+#define SOUND_SPEED 0.034
+long dT;
+float distanceCm;
+
+/************************/
 //=====================================================================================================================================
 void setup() 
 {
@@ -105,6 +112,11 @@ void setup()
   encoder_B.attachHalfQuad(ENC_B_1, ENC_B_1); // Attache pins for use as encoder pins
   encoder_B.setCount(0);  // set starting count value after attaching
   /****************/
+
+  /*** ultrasonic ***/
+  pinMode(TRIG_PIN, OUTPUT); // Sets the trigPin as an Output
+  pinMode(ECHO_PIN, INPUT); // Sets the echoPin as an Input
+  /*****************/
   
   Serial.begin(115200);
 
@@ -192,7 +204,7 @@ void decode_message(){
           Serial.println(buff) ; 
           break ; 
         case 'U':
-          sprintf(buff, "R,U,%d,%d", 1, 1) ; 
+          sprintf(buff, "R,U,%d",distance) ; 
           Serial.println(buff) ; 
           break ; 
         default:
@@ -255,7 +267,13 @@ void update_encoder(){
   }
 }
 
-void read_sensors(){
-
+void read_ultrasonic(){
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+  dT = pulseIn(echoPin, HIGH);
+  distanceCm = dT * SOUND_SPEED/2;
 }
 //===================================================================================================================================
