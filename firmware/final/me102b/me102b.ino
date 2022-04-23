@@ -3,12 +3,12 @@
 #include <ESP32Servo.h>
 
 #define SPR_MOT_PIN 15
-#define MOT_A_1 2
-#define MOT_A_2 4
+#define MOT_A_1 5
+#define MOT_A_2 18
 #define ENC_A_1 13
 #define ENC_A_2 12
-#define MOT_B_1 5
-#define MOT_B_2 18
+#define MOT_B_1 19
+#define MOT_B_2 21
 #define ENC_B_1 14
 #define ENC_B_2 27
 #define ECHO_PIN 26
@@ -19,17 +19,12 @@
 void decode_message() ; 
 void update_motors() ; 
 void update_encoder() ;
- 
+void read_ultrasonic();
 /**** data structures ****/
 /************************************/
 /*          type definitions        */
 /************************************/
 typedef struct motor_conf_t{
-  const int pin; 
-  const int freq;
-  const int resolution;
-  const int mot_channel_1;
-  const int mot_channel_2;
   int enable;
   int dutyCycle; 
 } motor_conf_t ; 
@@ -48,14 +43,14 @@ typedef struct encoder_data_t{
 const int freq = 5000;
 const int resolution = 8;
 
-const int mot_a_channel_1 = 16;
-const int mot_a_channel_2 = 15;
-const int mot_b_channel_1 = 14;
-const int mot_b_channel_2 = 13;
+const int mot_a_channel_1 = 5;
+const int mot_a_channel_2 = 6;
+const int mot_b_channel_1 = 7;
+const int mot_b_channel_2 = 8;
 
-motor_conf_t spr_mot_conf = {.pin = 0, .freq = 0, .resolution = 0, .mot_channel_1 = 0, .mot_channel_2 = 0, .enable = 0, .dutyCycle = 0} ;
-motor_conf_t mot_a_conf = {.pin = 0, .freq = 0, .resolution = 0, .mot_channel_1 = 16, .mot_channel_2 = 15, .enable = 0, .dutyCycle = 0} ; 
-motor_conf_t mot_b_conf = {.pin = 0, .freq = 0, .resolution = 0, .mot_channel_1 = 14, .mot_channel_2 = 13, .enable = 0, .dutyCycle = 0} ;
+motor_conf_t spr_mot_conf = {.enable = 0, .dutyCycle = 0} ;
+motor_conf_t mot_a_conf = {.enable = 0, .dutyCycle = 0} ; 
+motor_conf_t mot_b_conf = {.enable = 0, .dutyCycle = 0} ;
 
 Servo spr_mot;
 
@@ -73,7 +68,14 @@ encoder_data_t enc_B_data = {.p = 0, .v = 0, .p_last = 0 };
 
 unsigned long prev_time = 0;
 const long dt = 20;
+/***********************/
 
+/****** ultrasonic *******/
+#define SOUND_SPEED 0.034
+long dT;
+float distanceCm;
+
+/************************/
 //=====================================================================================================================================
 void setup() 
 {
@@ -111,6 +113,11 @@ void setup()
   encoder_B.setCount(0);  // set starting count value after attaching
   /****************/
 
+  /*** ultrasonic ***/
+  pinMode(TRIG_PIN, OUTPUT); // Sets the trigPin as an Output
+  pinMode(ECHO_PIN, INPUT); // Sets the echoPin as an Input
+  /*****************/
+  
   Serial.begin(115200);
 
 }
@@ -128,6 +135,10 @@ void loop() {
     
   /************* encoder **************/
   update_encoder() ; 
+  /***********************************/
+
+  /************ sensors **************/
+  read_sensors();
   /***********************************/
 }
 
@@ -156,8 +167,10 @@ void decode_message(){
         case 'A':
           s = strtok(NULL, ",");
           if (s != NULL) mot_a_conf.enable = atoi(s); 
+          Serial.println(s); 
           s = strtok(NULL, ",");
           if (s != NULL) mot_a_conf.dutyCycle = atoi(s);
+          Serial.println(s);
           break ; 
         case 'B':
           s = strtok(NULL, ",");
@@ -179,11 +192,11 @@ void decode_message(){
           Serial.println(buff) ; 
           break ; 
         case 'A':
-          sprintf(buff, "R,A,%d,%d", mot_b_conf.enable, mot_b_conf.dutyCycle) ; 
+          sprintf(buff, "R,A,%d,%d,%d,%d,%d", mot_a_conf.enable, mot_a_conf.dutyCycle, enc_A_data.p_last, enc_A_data.p, enc_A_data.v) ; 
           Serial.println(buff) ; 
           break ; 
         case 'B':
-          sprintf(buff, "R,B,%d,%d", mot_b_conf.enable, mot_b_conf.dutyCycle) ; 
+          sprintf(buff, "R,B,%d,%d,%d,%d,%d", mot_b_conf.enable, mot_b_conf.dutyCycle, enc_B_data.p_last, enc_B_data.p, enc_B_data.v) ; 
           Serial.println(buff) ; 
           break ; 
         case 'I':
@@ -191,7 +204,7 @@ void decode_message(){
           Serial.println(buff) ; 
           break ; 
         case 'U':
-          sprintf(buff, "R,U,%d,%d", 1, 1) ; 
+          sprintf(buff, "R,U,%d",distance) ; 
           Serial.println(buff) ; 
           break ; 
         default:
@@ -206,33 +219,32 @@ void decode_message(){
 }
 
 void update_motors(){
-  //need to add reverse
   //motor a
   if(mot_a_conf.enable){
     if(mot_a_conf.dutyCycle > 0){
-      ledcWrite(mot_a_conf.mot_channel_1, mot_a_conf.dutyCycle);
-      ledcWrite(mot_a_conf.mot_channel_2, LOW);
+      ledcWrite(mot_a_channel_1, mot_a_conf.dutyCycle);
+      ledcWrite(mot_a_channel_2, LOW);
     }else{
-      ledcWrite(mot_a_conf.mot_channel_1, LOW);
-      ledcWrite(mot_a_conf.mot_channel_2, -mot_a_conf.dutyCycle);
+      ledcWrite(mot_a_channel_1, LOW);
+      ledcWrite(mot_a_channel_2, -mot_a_conf.dutyCycle);
     }
   }else{
-    ledcWrite(mot_a_conf.mot_channel_1, LOW);
-    ledcWrite(mot_a_conf.mot_channel_2, LOW);
+    ledcWrite(mot_a_channel_1, LOW);
+    ledcWrite(mot_a_channel_2, LOW);
   }
   
   //motor b
   if(mot_b_conf.enable){
     if(mot_b_conf.dutyCycle > 0){
-      ledcWrite(mot_b_conf.mot_channel_1, mot_b_conf.dutyCycle);
-      ledcWrite(mot_b_conf.mot_channel_2, LOW);
+      ledcWrite(mot_b_channel_1, mot_b_conf.dutyCycle);
+      ledcWrite(mot_b_channel_2, LOW);
     }else{
-      ledcWrite(mot_b_conf.mot_channel_1, LOW);
-      ledcWrite(mot_b_conf.mot_channel_2, -mot_b_conf.dutyCycle);
+      ledcWrite(mot_b_channel_1, LOW);
+      ledcWrite(mot_b_channel_2, -mot_b_conf.dutyCycle);
     }
   }else{
-    ledcWrite(mot_b_conf.mot_channel_1, LOW);
-    ledcWrite(mot_b_conf.mot_channel_2, LOW);
+    ledcWrite(mot_b_channel_1, LOW);
+    ledcWrite(mot_b_channel_2, LOW);
   }
 
   //spr motor
@@ -255,5 +267,13 @@ void update_encoder(){
   }
 }
 
-
+void read_ultrasonic(){
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+  dT = pulseIn(echoPin, HIGH);
+  distanceCm = dT * SOUND_SPEED/2;
+}
 //===================================================================================================================================
