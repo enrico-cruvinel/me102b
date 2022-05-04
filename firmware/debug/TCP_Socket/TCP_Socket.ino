@@ -15,14 +15,14 @@ int port = 8888;                        // Define port number
 WiFiServer server(port);                // Creates a server that listens for incoming connections on the specified port
 
 //Server connect to WiFi Network
-//const char *ssid = "Enrico's iPhone";             // WIFI SSID
-//const char *password = "abcd1234";  // WIFI Password
+const char *ssid = "Enrico's iPhone"; // WIFI SSID
+const char *password = "abcd1234";  // /WIFI Password
 
 //const char *ssid = "BARC_Network";             // WIFI /SSID
 //const char *password = "self.barc_h0me";  // WIFI Pa/ssword
 
-const char *ssid = "MPC_LAB_5G";             // WIFI SSID
-const char *password = "self.barc_h0me";  // WIFI Password
+//const char *ssid = "MPC_LAB_5G";      /       // WIFI SSID
+//const char *password = "self.barc_h/0me";  // WIFI Password
 
 
 //const char *ssid = "50-Hesse";             // WIFI SSID
@@ -36,7 +36,7 @@ int count=0;
 void setup() 
 {
   Serial.begin(115200);                 // Opens serial port, then sets data rate (bps)
-  
+ 
   WiFi.mode(WIFI_STA);                  // Set ESP8266 to Station (STA) mode
   WiFi.begin(ssid, password);           // Connect to WiFi
  
