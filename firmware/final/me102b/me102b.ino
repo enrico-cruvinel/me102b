@@ -138,7 +138,7 @@ void loop() {
   /***********************************/
 
   /************ sensors **************/
-  read_sensors();
+  read_ultrasonic();
   /***********************************/
 }
 
@@ -167,10 +167,8 @@ void decode_message(){
         case 'A':
           s = strtok(NULL, ",");
           if (s != NULL) mot_a_conf.enable = atoi(s); 
-          Serial.println(s); 
           s = strtok(NULL, ",");
           if (s != NULL) mot_a_conf.dutyCycle = atoi(s);
-          Serial.println(s);
           break ; 
         case 'B':
           s = strtok(NULL, ",");
@@ -204,7 +202,7 @@ void decode_message(){
           Serial.println(buff) ; 
           break ; 
         case 'U':
-          sprintf(buff, "R,U,%d",distance) ; 
+          sprintf(buff, "R,U,%d",distanceCm) ; 
           Serial.println(buff) ; 
           break ; 
         default:
@@ -273,7 +271,7 @@ void read_ultrasonic(){
   digitalWrite(TRIG_PIN, HIGH);
   delayMicroseconds(10);
   digitalWrite(TRIG_PIN, LOW);
-  dT = pulseIn(echoPin, HIGH);
+  dT = pulseIn(ECHO_PIN, HIGH);
   distanceCm = dT * SOUND_SPEED/2;
 }
 //===================================================================================================================================
