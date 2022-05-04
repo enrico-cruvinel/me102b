@@ -5,14 +5,25 @@
  * Written by SIN Consulting 2019
 */
 
-#include <ESP8266WiFi.h>
+#ifdef ESP32
+  #include <WiFi.h>
+#else
+  #include <ESP8266WiFi.h>
+#endif
 
 int port = 8888;                        // Define port number
 WiFiServer server(port);                // Creates a server that listens for incoming connections on the specified port
 
 //Server connect to WiFi Network
-const char *ssid = "Enrico's iPhone";             // WIFI SSID
-const char *password = "abcd1234";  // WIFI Password
+//const char *ssid = "Enrico's iPhone";             // WIFI SSID
+//const char *password = "abcd1234";  // WIFI Password
+
+//const char *ssid = "BARC_Network";             // WIFI /SSID
+//const char *password = "self.barc_h0me";  // WIFI Pa/ssword
+
+const char *ssid = "MPC_LAB_5G";             // WIFI SSID
+const char *password = "self.barc_h0me";  // WIFI Password
+
 
 //const char *ssid = "50-Hesse";             // WIFI SSID
 //const char *password = "14941798";  // WIFI Password
@@ -30,7 +41,8 @@ void setup()
   WiFi.begin(ssid, password);           // Connect to WiFi
  
   // Wait for connection  
-  Serial.println("Connecting to Wifi");
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
   while (WiFi.status() != WL_CONNECTED) // While not connected, print ... to serial monitor
   {   
     delay(500);
