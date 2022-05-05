@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <ESP32Encoder.h>
 #include <ESP32Servo.h>
+#include <Wifi.h> 
 
 #define SPR_MOT_PIN 15
 #define MOT_A_1 5
@@ -20,6 +21,7 @@ void decode_message() ;
 void update_motors() ; 
 void update_encoder() ;
 void read_ultrasonic();
+int readUntil(char c, char *buff, int len);
 /**** data structures ****/
 /************************************/
 /*          type definitions        */
@@ -76,6 +78,17 @@ long dT;
 float distanceCm;
 
 /************************/
+
+
+/********* wifi *********/
+int port = 8888;                        // Define port number
+WiFiServer server(port);                // Creates a server that listens for incoming connections on the specified port
+
+//Server connect to WiFi Network
+const char *ssid = "Enrico's iPhone";             // WIFI SSID
+const char *password = "abcd1234";  // WIFI Password
+/************************/
+
 //=====================================================================================================================================
 void setup() 
 {
@@ -154,7 +167,7 @@ void decode_message(){
     
     // Example: R,S,1,100
     if (server_message[0] == 'W') {
-      Serial.println(server_message);
+      client.write(server_message, sizeof(server_message)); 
       char *s = strtok(server_message, ","); //allows string to be broken into tokens by ",".
       s = strtok(NULL, ",");
       switch(s[0]){
@@ -189,23 +202,23 @@ void decode_message(){
       switch(s[0]){
         case 'S':
           sprintf(buff, "R,S,%d,%d", spr_mot_conf.enable, spr_mot_conf.dutyCycle) ; 
-          Serial.println(buff) ; 
+          client.write(buff, sizeof(buff)); 
           break ; 
         case 'A':
           sprintf(buff, "R,A,%d,%d,%d,%d,%d", mot_a_conf.enable, mot_a_conf.dutyCycle, enc_A_data.p_last, enc_A_data.p, enc_A_data.v) ; 
-          Serial.println(buff) ; 
+          client.write(buff, sizeof(buff)); 
           break ; 
         case 'B':
           sprintf(buff, "R,B,%d,%d,%d,%d,%d", mot_b_conf.enable, mot_b_conf.dutyCycle, enc_B_data.p_last, enc_B_data.p, enc_B_data.v) ; 
-          Serial.println(buff) ; 
+          client.write(buff, sizeof(buff)); 
           break ; 
         case 'I':
           sprintf(buff, "R,I,%d,%d", 1, 1) ; 
-          Serial.println(buff) ; 
+          client.write(buff, sizeof(buff)); 
           break ; 
         case 'U':
           sprintf(buff, "R,U,%d",distance) ; 
-          Serial.println(buff) ; 
+          client.write(buff, sizeof(buff)); 
           break ; 
         default:
           break ;   
@@ -275,5 +288,15 @@ void read_ultrasonic(){
   digitalWrite(TRIG_PIN, LOW);
   dT = pulseIn(echoPin, HIGH);
   distanceCm = dT * SOUND_SPEED/2;
+}
+
+int readUntil(char c, char *buff, int len){
+  int i = 0; 
+  while (client.available()>0) {
+    buff[i] = client.read()
+    i++; 
+    if (buff[i]==c || i>len) break;
+  }
+  return i ; 
 }
 //===================================================================================================================================
